@@ -169,11 +169,38 @@
   color: #fecaca;
 }
 
+.continue-button {
+  margin-top: 2rem;
+  padding: 1rem 2.5rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 12px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.continue-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.6);
+  transform: translateY(-2px);
+}
+
+.continue-button:active {
+  transform: translateY(0);
+}
+
 .swipe-hint {
   font-size: 1.1rem;
-  margin-top: 2rem;
+  margin-top: 1.5rem;
   opacity: 0.8;
   animation: bounce 2s ease-in-out infinite;
+}
+
+.mobile-only {
+  display: none;
 }
 
 @keyframes bounce {
@@ -229,6 +256,15 @@
   .move-comment {
     font-size: 0.9rem;
     padding: 0.75rem;
+  }
+
+  /* Hide button on mobile, show swipe hint */
+  .continue-button {
+    display: none;
+  }
+
+  .mobile-only {
+    display: block;
   }
 }
 

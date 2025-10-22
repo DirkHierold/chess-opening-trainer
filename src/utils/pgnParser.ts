@@ -82,6 +82,7 @@ function splitPGNGames(pgnContent: string): string[] {
 
 /**
  * Extract moves with their positions and comments from a PGN game
+ * Only extracts White's moves (for White repertoire training)
  * @param gameText - Single game PGN text
  * @returns Array of positions with moves and comments
  */
@@ -108,6 +109,9 @@ function extractMovesWithComments(gameText: string): ParsedMove[] {
       const currentFen = chess.fen();
       const move = history[i];
 
+      // Check whose turn it is (White to move = 'w', Black to move = 'b')
+      const currentTurn = chess.turn();
+
       // Make the move
       chess.move(move.san);
 
@@ -117,11 +121,14 @@ function extractMovesWithComments(gameText: string): ParsedMove[] {
         commentIndex++;
       }
 
-      moves.push({
-        fen: currentFen,
-        move: move.san,
-        comment,
-      });
+      // Only create flashcard if it's White's turn (White's move to learn)
+      if (currentTurn === 'w') {
+        moves.push({
+          fen: currentFen,
+          move: move.san,
+          comment,
+        });
+      }
     }
   } catch (error) {
     console.warn('Failed to load PGN:', error);

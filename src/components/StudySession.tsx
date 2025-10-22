@@ -266,7 +266,13 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, onExit
               {currentCard.comment && (
                 <div className="move-comment">{currentCard.comment}</div>
               )}
-              <div className="swipe-hint">👆 Swipe up to continue</div>
+              <button
+                className="continue-button"
+                onClick={() => advanceToNextCard(true)}
+              >
+                Continue →
+              </button>
+              <div className="swipe-hint mobile-only">👆 Swipe up to continue</div>
             </div>
           </div>
         )}
