@@ -1,10 +1,23 @@
 // Core data types for the chess opening trainer
 
+export interface Square {
+  square: string;
+  color: 'Y' | 'R' | 'G' | 'B';
+}
+
+export interface Arrow {
+  from: string;
+  to: string;
+  color: 'Y' | 'R' | 'G' | 'B';
+}
+
 export interface Flashcard {
   id: string;
   fen: string; // Position to show
   correctMove: string; // Expected move in SAN notation
-  comment?: string; // PGN comment for the move
+  comment?: string; // PGN comment for the move (cleaned, without markup)
+  highlightedSquares?: Square[]; // From [%csl] markup
+  arrows?: Arrow[]; // From [%cal] markup
   easinessFactor: number; // SM-2 algorithm parameter
   interval: number; // Days until next review
   repetitions: number; // Number of consecutive correct answers

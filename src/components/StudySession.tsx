@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
 import type { Flashcard, Repertoire } from '../types';
@@ -12,6 +12,16 @@ interface StudySessionProps {
 }
 
 type FeedbackState = 'none' | 'correct' | 'incorrect';
+
+// Helper function to convert color codes to RGB
+const colorToRgb = (color: 'Y' | 'R' | 'G' | 'B'): string => {
+  switch (color) {
+    case 'Y': return 'rgb(255, 255, 0)'; // Yellow
+    case 'R': return 'rgb(255, 0, 0)';   // Red
+    case 'G': return 'rgb(0, 255, 0)';   // Green
+    case 'B': return 'rgb(0, 0, 255)';   // Blue
+  }
+};
 
 export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, onExit }) => {
   const [repertoire, setRepertoire] = useState<Repertoire | null>(null);
@@ -62,6 +72,57 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, onExit
   };
 
   const currentCard = dueCards[currentCardIndex];
+
+  // Calculate custom arrows for the board
+  const customArrows = useMemo(() => {
+    const arrows: { startSquare: string; endSquare: string; color: string }[] = [];
+
+    // Show annotation arrows when feedback is shown
+    if (feedback !== 'none' && currentCard?.arrows) {
+      for (const arrow of currentCard.arrows) {
+        arrows.push({
+          startSquare: arrow.from,
+          endSquare: arrow.to,
+          color: colorToRgb(arrow.color),
+        });
+      }
+    }
+
+    // Add green arrow for correct move when incorrect
+    if (feedback === 'incorrect' && currentCard) {
+      try {
+        const tempChess = new Chess(currentCard.fen);
+        const move = tempChess.move(currentCard.correctMove);
+        if (move) {
+          arrows.push({
+            startSquare: move.from,
+            endSquare: move.to,
+            color: 'rgb(0, 200, 0)',
+          });
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+    }
+
+    return arrows;
+  }, [feedback, currentCard]);
+
+  // Calculate custom square styles for highlighted squares
+  const customSquareStyles = useMemo(() => {
+    const styles: { [square: string]: { backgroundColor: string } } = {};
+
+    // Show highlighted squares when feedback is shown
+    if (feedback !== 'none' && currentCard?.highlightedSquares) {
+      for (const sq of currentCard.highlightedSquares) {
+        styles[sq.square] = {
+          backgroundColor: colorToRgb(sq.color),
+        };
+      }
+    }
+
+    return styles;
+  }, [feedback, currentCard]);
 
   const handleMove = ({ sourceSquare, targetSquare }: { piece: unknown; sourceSquare: string; targetSquare: string | null }): boolean => {
     if (feedback !== 'none' || !targetSquare) {
@@ -120,10 +181,7 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, onExit
 
     updateFlashcard(repertoireId, updatedCard);
 
-    // Auto-advance after 1.5 seconds
-    setTimeout(() => {
-      advanceToNextCard(false);
-    }, 1500);
+    // Don't auto-advance - wait for user to continue
   };
 
   const handleIncorrectAnswer = () => {
@@ -175,18 +233,18 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, onExit
 
   // Swipe gesture handlers
   const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.touches[0].clientY);
+    setTouchStart(e.touches[0].clientX);
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (touchStart === null) return;
 
-    const touchEnd = e.changedTouches[0].clientY;
+    const touchEnd = e.changedTouches[0].clientX;
     const diff = touchStart - touchEnd;
 
-    // Swipe up detected (threshold: 50px)
-    if (diff > 50 && feedback === 'incorrect') {
-      advanceToNextCard(true);
+    // Swipe left detected (threshold: 50px) - advance to next card
+    if (diff > 50 && feedback !== 'none') {
+      advanceToNextCard(feedback === 'incorrect');
     }
 
     setTouchStart(null);
@@ -226,54 +284,53 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, onExit
         <div className="progress-fill" style={{ width: `${progress}%` }} />
       </div>
 
-      {/* Main card area */}
-      <div className={`flashcard ${feedback}`}>
+      {/* Main content area */}
+      <div className="content-area">
+        {/* Feedback indicator */}
+        {feedback !== 'none' && (
+          <div className={`feedback-indicator ${feedback}`}>
+            <span className="feedback-icon">{feedback === 'correct' ? '✓' : '✗'}</span>
+            <span className="feedback-label">
+              {feedback === 'correct' ? 'Correct!' : 'Incorrect'}
+            </span>
+          </div>
+        )}
+
+        {/* Chess board */}
         <div className="chessboard-container">
           <Chessboard
             options={{
-              id: 'study-board',
               position: boardPosition,
               onPieceDrop: handleMove,
               allowDragging: feedback === 'none',
-              allowDrawingArrows: false,
+              arrows: customArrows,
+              squareStyles: customSquareStyles,
               boardOrientation: 'white',
               boardStyle: {
                 borderRadius: '8px',
-                boxShadow: '0 8px 30px rgba(0, 0, 0, 0.5)',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
               },
             }}
           />
         </div>
 
-        {/* Feedback overlay */}
-        {feedback === 'correct' && (
-          <div className="feedback-overlay correct">
-            <div className="feedback-content">
-              <div className="feedback-icon">✓</div>
-              <div className="feedback-text">Correct!</div>
-            </div>
-          </div>
-        )}
-
-        {feedback === 'incorrect' && (
-          <div className="feedback-overlay incorrect">
-            <div className="feedback-content">
-              <div className="feedback-icon">✗</div>
-              <div className="feedback-text">Incorrect</div>
-              <div className="correct-move">
-                Correct move: <strong>{currentCard.correctMove}</strong>
+        {/* Comment section - always below board */}
+        {feedback !== 'none' && (
+          <div className="comment-section">
+            {currentCard.comment && (
+              <div className="move-comment">
+                {currentCard.comment}
               </div>
-              {currentCard.comment && (
-                <div className="move-comment">{currentCard.comment}</div>
-              )}
-              <button
-                className="continue-button"
-                onClick={() => advanceToNextCard(true)}
-              >
-                Continue →
-              </button>
-              <div className="swipe-hint mobile-only">👆 Swipe up to continue</div>
-            </div>
+            )}
+
+            <button
+              className="continue-button"
+              onClick={() => advanceToNextCard(feedback === 'incorrect')}
+            >
+              Continue →
+            </button>
+
+            <div className="swipe-hint">← Swipe left to continue</div>
           </div>
         )}
       </div>

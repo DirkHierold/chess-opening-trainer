@@ -1,13 +1,21 @@
 // PGN Parser to convert PGN files into flashcards
 
 import { Chess } from 'chess.js';
-import type { Flashcard } from '../types';
+import type { Flashcard, Square, Arrow } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
 interface ParsedMove {
   fen: string;
   move: string;
   comment?: string;
+  highlightedSquares?: Square[];
+  arrows?: Arrow[];
+}
+
+interface ParsedComment {
+  cleanText: string;
+  highlightedSquares: Square[];
+  arrows: Arrow[];
 }
 
 /**
@@ -36,6 +44,8 @@ export function parsePGNToFlashcards(pgnContent: string): Flashcard[] {
           fen: moveData.fen,
           correctMove: moveData.move,
           comment: moveData.comment,
+          highlightedSquares: moveData.highlightedSquares,
+          arrows: moveData.arrows,
           easinessFactor: 2.5,
           interval: 0,
           repetitions: 0,
@@ -116,8 +126,9 @@ function extractMovesWithComments(gameText: string): ParsedMove[] {
       chess.move(move.san);
 
       // Check if there's a comment for this move
-      const comment = commentIndex < comments.length ? comments[commentIndex] : undefined;
-      if (comment) {
+      let parsedComment: ParsedComment | undefined;
+      if (commentIndex < comments.length) {
+        parsedComment = parseCommentMarkup(comments[commentIndex]);
         commentIndex++;
       }
 
@@ -126,7 +137,9 @@ function extractMovesWithComments(gameText: string): ParsedMove[] {
         moves.push({
           fen: currentFen,
           move: move.san,
-          comment,
+          comment: parsedComment?.cleanText,
+          highlightedSquares: parsedComment?.highlightedSquares,
+          arrows: parsedComment?.arrows,
         });
       }
     }
@@ -153,6 +166,59 @@ function extractComments(pgn: string): string[] {
   }
 
   return comments;
+}
+
+/**
+ * Parse PGN comment to extract markup annotations and clean text
+ * Handles [%csl] for colored squares and [%cal] for colored arrows
+ * @param comment - Raw comment text from PGN
+ * @returns Parsed comment with markup data and clean text
+ */
+function parseCommentMarkup(comment: string): ParsedComment {
+  const result: ParsedComment = {
+    cleanText: comment,
+    highlightedSquares: [],
+    arrows: [],
+  };
+
+  // Extract colored square list [%csl Ya2,Rb4]
+  const cslRegex = /\[%csl\s+([^\]]+)\]/g;
+  let cslMatch;
+  while ((cslMatch = cslRegex.exec(comment)) !== null) {
+    const squares = cslMatch[1].split(',');
+    for (const sq of squares) {
+      const trimmed = sq.trim();
+      if (trimmed.length >= 3) {
+        const color = trimmed[0] as 'Y' | 'R' | 'G' | 'B';
+        const square = trimmed.substring(1).toLowerCase();
+        result.highlightedSquares.push({ square, color });
+      }
+    }
+  }
+
+  // Extract colored arrow list [%cal Yb4a2,Rd2d4]
+  const calRegex = /\[%cal\s+([^\]]+)\]/g;
+  let calMatch;
+  while ((calMatch = calRegex.exec(comment)) !== null) {
+    const arrows = calMatch[1].split(',');
+    for (const arrow of arrows) {
+      const trimmed = arrow.trim();
+      if (trimmed.length >= 5) {
+        const color = trimmed[0] as 'Y' | 'R' | 'G' | 'B';
+        const from = trimmed.substring(1, 3).toLowerCase();
+        const to = trimmed.substring(3, 5).toLowerCase();
+        result.arrows.push({ from, to, color });
+      }
+    }
+  }
+
+  // Remove markup from comment text
+  result.cleanText = comment
+    .replace(/\[%csl\s+[^\]]+\]/g, '')
+    .replace(/\[%cal\s+[^\]]+\]/g, '')
+    .trim();
+
+  return result;
 }
 
 /**
