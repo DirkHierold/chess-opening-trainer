@@ -58,13 +58,14 @@ export function parsePGNToFlashcards(pgnContent: string): Flashcard[] {
  */
 function splitPGNGames(pgnContent: string): string[] {
   // PGN games are typically separated by blank lines
-  // Each game starts with [Event or similar headers
+  // Each game starts with [Event "..."] (not [EventDate, EventType, etc.)
   const games: string[] = [];
   let currentGame = '';
   const lines = pgnContent.split('\n');
 
   for (const line of lines) {
-    if (line.trim().startsWith('[Event') && currentGame.trim()) {
+    // Match specifically [Event "..."] not [EventDate, EventType, etc.
+    if (line.trim().match(/^\[Event\s+"/) && currentGame.trim()) {
       games.push(currentGame);
       currentGame = line + '\n';
     } else {
@@ -153,7 +154,8 @@ function extractLineName(gameText: string): string | undefined {
 
     if (looksLikeMoves && whitePart !== '?' && blackPart !== '?') {
       // Combine White and Black headers to form chapter name
-      return `${whitePart} - ${blackPart}`;
+      const result = `${whitePart} - ${blackPart}`;
+      return result;
     }
   }
 
