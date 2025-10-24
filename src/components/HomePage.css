@@ -194,7 +194,7 @@
 .delete-button {
   position: absolute;
   top: 0.75rem;
-  right: 0.75rem;
+  left: 0.75rem;
   width: 2rem;
   height: 2rem;
   border-radius: 50%;

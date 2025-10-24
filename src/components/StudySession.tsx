@@ -35,7 +35,6 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, onExit
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [errorCount, setErrorCount] = useState(0);
   const [showFeedback, setShowFeedback] = useState(false);
-  const [feedbackMessage, setFeedbackMessage] = useState('');
 
   useEffect(() => {
     loadSession();
@@ -72,7 +71,6 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, onExit
     setCurrentMoveIndex(0);
     setErrorCount(0);
     setShowFeedback(false);
-    setFeedbackMessage('');
     setSelectedSquare(null);
   };
 
@@ -211,7 +209,6 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, onExit
   const handleCorrectMove = () => {
     setBoardPosition(chess.fen());
     setShowFeedback(true);
-    setFeedbackMessage('Correct!');
     setSessionCorrect(prev => prev + 1);
     setCurrentStreak(prev => prev + 1);
     setErrorCount(0);
@@ -253,7 +250,6 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, onExit
   const handleIncorrectMove = () => {
     setErrorCount(prev => prev + 1);
     setShowFeedback(true);
-    setFeedbackMessage('Incorrect - Try again');
     setSessionIncorrect(prev => prev + 1);
     setCurrentStreak(0);
   };
@@ -359,16 +355,8 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, onExit
           <div className="move-progress">{moveProgress}</div>
         </div>
 
-        {/* Feedback indicator */}
-        {showFeedback && (
-          <div className={`feedback-indicator ${errorCount === 0 ? 'correct' : 'incorrect'}`}>
-            <span className="feedback-icon">{errorCount === 0 ? '✓' : '✗'}</span>
-            <span className="feedback-label">{feedbackMessage}</span>
-          </div>
-        )}
-
-        {/* Chess board */}
-        <div className="chessboard-container">
+        {/* Chess board with feedback border */}
+        <div className={`chessboard-container ${showFeedback ? (errorCount === 0 ? 'feedback-correct' : 'feedback-incorrect') : ''}`}>
           <Chessboard
             options={{
               position: boardPosition,
@@ -388,8 +376,8 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, onExit
           />
         </div>
 
-        {/* Comment section */}
-        {currentExpectedMove.move.comment && showFeedback && (
+        {/* Comment section - always show when available */}
+        {currentExpectedMove.move.comment && (
           <div className="comment-section">
             <div className="move-comment">
               {currentExpectedMove.move.comment}
