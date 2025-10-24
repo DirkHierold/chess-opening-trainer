@@ -165,26 +165,33 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
   const handleSquareClick = ({ square }: { square: string }) => {
     if (!currentExpectedMove) return;
 
-    // Clear last correct move annotations when starting a new move
-    if (!selectedSquare) {
-      setLastCorrectMove(null);
-    }
+    // Check if there's a piece on this square
+    const squares = chess.board().flat();
+    const clickedSquare = squares.find(sq => sq && sq.square === square);
+    const hasWhitePiece = clickedSquare && clickedSquare.type && clickedSquare.color === 'w';
 
-    // If no square selected, select this square
+    // If no square selected
     if (!selectedSquare) {
-      // Check if there's a piece on this square that we can move
-      const squares = chess.board().flat();
-      const clickedSquare = squares.find(sq => sq && sq.square === square);
-      if (clickedSquare && clickedSquare.type && clickedSquare.color === 'w') {
+      // Clear last correct move annotations when starting a new move
+      setLastCorrectMove(null);
+
+      // Select this square if it has a white piece
+      if (hasWhitePiece) {
         setSelectedSquare(square);
       }
       return;
     }
 
-    // Square already selected, try to move
+    // Square already selected
     if (selectedSquare === square) {
       // Clicked same square, deselect
       setSelectedSquare(null);
+      return;
+    }
+
+    // Clicked on another white piece - switch selection
+    if (hasWhitePiece) {
+      setSelectedSquare(square);
       return;
     }
 
@@ -317,7 +324,28 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
     );
   }
 
-  const moveProgress = `Move ${currentMoveIndex + 1} / ${currentCard.moves.length}`;
+  // Calculate move number in chess notation (1 full move = White + Black)
+  const currentFullMove = useMemo(() => {
+    let whiteMoves = 0;
+    for (let i = 0; i <= currentMoveIndex && i < currentCard.moves.length; i++) {
+      if (currentCard.moves[i].color === 'w') {
+        whiteMoves++;
+      }
+    }
+    return whiteMoves;
+  }, [currentCard, currentMoveIndex]);
+
+  const totalFullMoves = useMemo(() => {
+    let whiteMoves = 0;
+    for (const move of currentCard.moves) {
+      if (move.color === 'w') {
+        whiteMoves++;
+      }
+    }
+    return whiteMoves;
+  }, [currentCard]);
+
+  const moveProgress = `Move ${currentFullMove} / ${totalFullMoves}`;
 
   return (
     <div className="study-session">

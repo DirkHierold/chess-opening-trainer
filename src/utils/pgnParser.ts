@@ -140,15 +140,40 @@ function extractCompleteLine(gameText: string): Move[] {
  * @returns Line name or undefined
  */
 function extractLineName(gameText: string): string | undefined {
-  // Try to extract from Event, ECO, or Opening headers
-  const eventMatch = gameText.match(/\[Event\s+"([^"]+)"\]/);
-  if (eventMatch) return eventMatch[1];
+  // Try multiple header types in order of preference
+  const headerPriority = [
+    'Event',
+    'White',
+    'Black',
+    'Opening',
+    'Variation',
+    'ECO',
+    'Site',
+    'Annotator'
+  ];
 
-  const openingMatch = gameText.match(/\[Opening\s+"([^"]+)"\]/);
-  if (openingMatch) return openingMatch[1];
+  for (const headerType of headerPriority) {
+    const regex = new RegExp(`\\[${headerType}\\s+"([^"]+)"\\]`);
+    const match = gameText.match(regex);
+    if (match && match[1] && match[1] !== '?' && match[1].trim() !== '') {
+      return match[1];
+    }
+  }
 
-  const ecoMatch = gameText.match(/\[ECO\s+"([^"]+)"\]/);
-  if (ecoMatch) return ecoMatch[1];
+  // Fallback: try to extract from first comment
+  const commentMatch = gameText.match(/\{([^}]+)\}/);
+  if (commentMatch) {
+    // Take first line of comment as name
+    const firstLine = commentMatch[1].split('\n')[0].trim();
+    // Remove markup commands
+    const cleaned = firstLine
+      .replace(/\[%csl\s+[^\]]+\]/g, '')
+      .replace(/\[%cal\s+[^\]]+\]/g, '')
+      .trim();
+    if (cleaned && cleaned.length > 0 && cleaned.length < 100) {
+      return cleaned;
+    }
+  }
 
   return undefined;
 }

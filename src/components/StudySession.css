@@ -6,6 +6,10 @@
   flex-direction: column;
   overflow: hidden;
   touch-action: pan-x;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .study-session.loading {
