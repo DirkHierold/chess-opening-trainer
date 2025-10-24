@@ -1,14 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
-import type { Flashcard, Repertoire } from '../types';
+import type { Flashcard, Repertoire, Square, Arrow } from '../types';
 import { getRepertoire, updateFlashcard, updateRepertoireStats } from '../utils/storage';
 import { calculateSM2, getNextReviewDate } from '../utils/sm2';
 import './StudySession.css';
 
 interface StudySessionProps {
   repertoireId: string;
+  chapterId: string;
   onExit: () => void;
+}
+
+interface MoveAnnotations {
+  comment?: string;
+  highlightedSquares?: Square[];
+  arrows?: Arrow[];
 }
 
 // Helper function to convert color codes to RGB
@@ -21,24 +28,25 @@ const colorToRgb = (color: 'Y' | 'R' | 'G' | 'B'): string => {
   }
 };
 
-export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, onExit }) => {
+export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapterId, onExit }) => {
   const [repertoire, setRepertoire] = useState<Repertoire | null>(null);
-  const [dueCards, setDueCards] = useState<Flashcard[]>([]);
-  const [currentCardIndex, setCurrentCardIndex] = useState(0);
+  const [currentCard, setCurrentCard] = useState<Flashcard | null>(null);
   const [chess] = useState(new Chess());
   const [boardPosition, setBoardPosition] = useState('');
   const [currentMoveIndex, setCurrentMoveIndex] = useState(0);
   const [sessionCorrect, setSessionCorrect] = useState(0);
   const [sessionIncorrect, setSessionIncorrect] = useState(0);
   const [currentStreak, setCurrentStreak] = useState(0);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [errorCount, setErrorCount] = useState(0);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [lastCorrectMove, setLastCorrectMove] = useState<MoveAnnotations | null>(null);
 
   useEffect(() => {
+    // Reset scroll position when entering study session
+    window.scrollTo(0, 0);
     loadSession();
-  }, [repertoireId]);
+  }, [repertoireId, chapterId]);
 
   const loadSession = () => {
     const loaded = getRepertoire(repertoireId);
@@ -50,19 +58,16 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, onExit
     setRepertoire(loaded);
     setCurrentStreak(loaded.streak);
 
-    const now = Date.now();
-    const due = loaded.flashcards.filter(card => card.nextReviewDate <= now);
-
-    if (due.length === 0) {
-      alert('No cards due for review! Come back later.');
+    // Find the specific chapter
+    const chapter = loaded.flashcards.find(card => card.id === chapterId);
+    if (!chapter) {
+      alert('Chapter not found!');
       onExit();
       return;
     }
 
-    // Shuffle due cards
-    const shuffled = [...due].sort(() => Math.random() - 0.5);
-    setDueCards(shuffled);
-    loadCard(shuffled[0]);
+    setCurrentCard(chapter);
+    loadCard(chapter);
   };
 
   const loadCard = (card: Flashcard) => {
@@ -72,9 +77,8 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, onExit
     setErrorCount(0);
     setShowFeedback(false);
     setSelectedSquare(null);
+    setLastCorrectMove(null);
   };
-
-  const currentCard = dueCards[currentCardIndex];
 
   // Get the current expected move (always a White move for the user)
   const currentExpectedMove = useMemo(() => {
@@ -95,68 +99,76 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, onExit
     const squares: { [square: string]: React.CSSProperties } = {};
     const arrows: { startSquare: string; endSquare: string; color: string }[] = [];
 
-    if (!currentExpectedMove || !showFeedback) {
-      return { squares, arrows };
+    // Show error hints
+    if (currentExpectedMove && showFeedback && errorCount > 0) {
+      const move = currentExpectedMove.move;
+
+      // First error: highlight source square (where piece that should move is)
+      if (errorCount >= 1) {
+        try {
+          const tempChess = new Chess(chess.fen());
+          const madeMove = tempChess.move(move.san);
+          if (madeMove) {
+            squares[madeMove.from] = {
+              backgroundColor: 'rgba(255, 0, 0, 0.5)',
+            };
+          }
+        } catch (e) {
+          // Ignore
+        }
+      }
+
+      // Second error: also show arrow
+      if (errorCount >= 2) {
+        try {
+          const tempChess = new Chess(chess.fen());
+          const madeMove = tempChess.move(move.san);
+          if (madeMove) {
+            arrows.push({
+              startSquare: madeMove.from,
+              endSquare: madeMove.to,
+              color: 'rgb(0, 200, 0)',
+            });
+          }
+        } catch (e) {
+          // Ignore
+        }
+      }
     }
 
-    const move = currentExpectedMove.move;
+    // Show PGN annotations from last correct move or current expected move
+    const annotationsSource = lastCorrectMove || (currentExpectedMove?.move);
 
-    // First error: highlight target square
-    if (errorCount >= 1) {
-      try {
-        const tempChess = new Chess(chess.fen());
-        const madeMove = tempChess.move(move.san);
-        if (madeMove) {
-          squares[madeMove.to] = {
-            backgroundColor: 'rgba(255, 0, 0, 0.5)',
+    if (annotationsSource) {
+      if (annotationsSource.highlightedSquares) {
+        for (const sq of annotationsSource.highlightedSquares) {
+          squares[sq.square] = {
+            backgroundColor: colorToRgb(sq.color),
           };
         }
-      } catch (e) {
-        // Ignore
       }
-    }
 
-    // Second error: also show arrow
-    if (errorCount >= 2) {
-      try {
-        const tempChess = new Chess(chess.fen());
-        const madeMove = tempChess.move(move.san);
-        if (madeMove) {
+      if (annotationsSource.arrows) {
+        for (const arrow of annotationsSource.arrows) {
           arrows.push({
-            startSquare: madeMove.from,
-            endSquare: madeMove.to,
-            color: 'rgb(0, 200, 0)',
+            startSquare: arrow.from,
+            endSquare: arrow.to,
+            color: colorToRgb(arrow.color),
           });
         }
-      } catch (e) {
-        // Ignore
-      }
-    }
-
-    // Show PGN annotations
-    if (move.highlightedSquares) {
-      for (const sq of move.highlightedSquares) {
-        squares[sq.square] = {
-          backgroundColor: colorToRgb(sq.color),
-        };
-      }
-    }
-
-    if (move.arrows) {
-      for (const arrow of move.arrows) {
-        arrows.push({
-          startSquare: arrow.from,
-          endSquare: arrow.to,
-          color: colorToRgb(arrow.color),
-        });
       }
     }
 
     return { squares, arrows };
-  }, [currentExpectedMove, errorCount, showFeedback, chess]);
+  }, [currentExpectedMove, errorCount, showFeedback, lastCorrectMove, chess]);
 
   const handleSquareClick = ({ square }: { square: string }) => {
     if (!currentExpectedMove) return;
+
+    // Clear last correct move annotations when starting a new move
+    if (!selectedSquare) {
+      setLastCorrectMove(null);
+    }
 
     // If no square selected, select this square
     if (!selectedSquare) {
@@ -213,6 +225,15 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, onExit
     setCurrentStreak(prev => prev + 1);
     setErrorCount(0);
 
+    // Save annotations from this correct move
+    if (currentExpectedMove) {
+      setLastCorrectMove({
+        comment: currentExpectedMove.move.comment,
+        highlightedSquares: currentExpectedMove.move.highlightedSquares,
+        arrows: currentExpectedMove.move.arrows,
+      });
+    }
+
     // Play opponent's moves automatically after a short delay
     setTimeout(() => {
       playOpponentMoves();
@@ -242,8 +263,8 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, onExit
 
     // Check if line is complete
     if (nextIndex >= currentCard.moves.length) {
-      // Line complete, update card and move to next
-      updateCardAndAdvance(true);
+      // Line complete, session successful
+      completeSession(true);
     }
   };
 
@@ -254,7 +275,7 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, onExit
     setCurrentStreak(0);
   };
 
-  const updateCardAndAdvance = (success: boolean) => {
+  const completeSession = (success: boolean) => {
     if (!currentCard) return;
 
     // Update flashcard with SM-2
@@ -276,40 +297,16 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, onExit
 
     updateFlashcard(repertoireId, updatedCard);
 
-    // Move to next card
-    const nextIndex = currentCardIndex + 1;
-    if (nextIndex >= dueCards.length) {
-      // Session complete
-      updateRepertoireStats(
-        repertoireId,
-        sessionCorrect,
-        sessionIncorrect,
-        sessionIncorrect > 0
-      );
-      onExit();
-    } else {
-      setCurrentCardIndex(nextIndex);
-      loadCard(dueCards[nextIndex]);
-    }
-  };
+    // Update repertoire stats
+    updateRepertoireStats(
+      repertoireId,
+      sessionCorrect,
+      sessionIncorrect,
+      sessionIncorrect > 0
+    );
 
-  // Swipe gesture handlers
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.touches[0].clientX);
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStart === null) return;
-
-    const touchEnd = e.changedTouches[0].clientX;
-    const diff = touchStart - touchEnd;
-
-    // Swipe left detected (threshold: 50px) - skip to next line
-    if (diff > 50) {
-      updateCardAndAdvance(false);
-    }
-
-    setTouchStart(null);
+    // Exit back to chapter selection
+    onExit();
   };
 
   if (!repertoire || !currentCard || !currentExpectedMove) {
@@ -320,15 +317,10 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, onExit
     );
   }
 
-  const progress = ((currentCardIndex + 1) / dueCards.length) * 100;
   const moveProgress = `Move ${currentMoveIndex + 1} / ${currentCard.moves.length}`;
 
   return (
-    <div
-      className="study-session"
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-    >
+    <div className="study-session">
       {/* Header with stats */}
       <div className="session-header">
         <button className="exit-button" onClick={onExit}>
@@ -336,15 +328,7 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, onExit
         </button>
         <div className="session-stats">
           <span className="streak">🔥 {currentStreak}</span>
-          <span className="card-counter">
-            {currentCardIndex + 1} / {dueCards.length}
-          </span>
         </div>
-      </div>
-
-      {/* Progress bar */}
-      <div className="progress-bar">
-        <div className="progress-fill" style={{ width: `${progress}%` }} />
       </div>
 
       {/* Main content area */}
@@ -376,17 +360,14 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, onExit
           />
         </div>
 
-        {/* Comment section - always show when available */}
-        {currentExpectedMove.move.comment && (
+        {/* Comment section - show from last correct move or current expected move */}
+        {(lastCorrectMove?.comment || currentExpectedMove.move.comment) && (
           <div className="comment-section">
             <div className="move-comment">
-              {currentExpectedMove.move.comment}
+              {lastCorrectMove?.comment || currentExpectedMove.move.comment}
             </div>
           </div>
         )}
-
-        {/* Swipe hint */}
-        <div className="swipe-hint">← Swipe left to skip line</div>
       </div>
     </div>
   );
