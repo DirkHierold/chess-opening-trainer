@@ -140,16 +140,33 @@ function extractCompleteLine(gameText: string): Move[] {
  * @returns Line name or undefined
  */
 function extractLineName(gameText: string): string | undefined {
-  // Try multiple header types in order of preference
+  // Special case: Check for White + Black header combination (ChessBase chapter format)
+  const whiteMatch = gameText.match(/\[White\s+"([^"]+)"\]/);
+  const blackMatch = gameText.match(/\[Black\s+"([^"]+)"\]/);
+
+  if (whiteMatch && blackMatch && whiteMatch[1] && blackMatch[1]) {
+    const whitePart = whiteMatch[1].trim();
+    const blackPart = blackMatch[1].trim();
+
+    // Check if these look like move sequences (contain numbers and moves)
+    const looksLikeMoves = /\d+\.|\.\.\./.test(whitePart) || /\d+\.|\.\.\./.test(blackPart);
+
+    if (looksLikeMoves && whitePart !== '?' && blackPart !== '?') {
+      // Combine White and Black headers to form chapter name
+      return `${whitePart} - ${blackPart}`;
+    }
+  }
+
+  // Try other header types in order of preference
   const headerPriority = [
     'Event',
-    'White',
-    'Black',
     'Opening',
     'Variation',
     'ECO',
     'Site',
-    'Annotator'
+    'Annotator',
+    'White',
+    'Black'
   ];
 
   for (const headerType of headerPriority) {
@@ -165,10 +182,9 @@ function extractLineName(gameText: string): string | undefined {
   if (commentMatch) {
     // Take first line of comment as name
     const firstLine = commentMatch[1].split('\n')[0].trim();
-    // Remove markup commands
+    // Remove ALL markup commands (not just csl and cal, but also evp, clk, emt, etc.)
     const cleaned = firstLine
-      .replace(/\[%csl\s+[^\]]+\]/g, '')
-      .replace(/\[%cal\s+[^\]]+\]/g, '')
+      .replace(/\[%[^\]]+\]/g, '') // Remove all [%...] markup commands
       .trim();
     if (cleaned && cleaned.length > 0 && cleaned.length < 100) {
       return cleaned;
