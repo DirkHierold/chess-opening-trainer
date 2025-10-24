@@ -94,6 +94,29 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
     return null;
   }, [currentCard, currentMoveIndex]);
 
+  // Calculate move number in chess notation (1 full move = White + Black)
+  const currentFullMove = useMemo(() => {
+    if (!currentCard) return 0;
+    let whiteMoves = 0;
+    for (let i = 0; i <= currentMoveIndex && i < currentCard.moves.length; i++) {
+      if (currentCard.moves[i].color === 'w') {
+        whiteMoves++;
+      }
+    }
+    return whiteMoves;
+  }, [currentCard, currentMoveIndex]);
+
+  const totalFullMoves = useMemo(() => {
+    if (!currentCard) return 0;
+    let whiteMoves = 0;
+    for (const move of currentCard.moves) {
+      if (move.color === 'w') {
+        whiteMoves++;
+      }
+    }
+    return whiteMoves;
+  }, [currentCard]);
+
   // Calculate squares and arrows to display
   const displayAnnotations = useMemo(() => {
     const squares: { [square: string]: React.CSSProperties } = {};
@@ -323,27 +346,6 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
       </div>
     );
   }
-
-  // Calculate move number in chess notation (1 full move = White + Black)
-  const currentFullMove = useMemo(() => {
-    let whiteMoves = 0;
-    for (let i = 0; i <= currentMoveIndex && i < currentCard.moves.length; i++) {
-      if (currentCard.moves[i].color === 'w') {
-        whiteMoves++;
-      }
-    }
-    return whiteMoves;
-  }, [currentCard, currentMoveIndex]);
-
-  const totalFullMoves = useMemo(() => {
-    let whiteMoves = 0;
-    for (const move of currentCard.moves) {
-      if (move.color === 'w') {
-        whiteMoves++;
-      }
-    }
-    return whiteMoves;
-  }, [currentCard]);
 
   const moveProgress = `Move ${currentFullMove} / ${totalFullMoves}`;
 
