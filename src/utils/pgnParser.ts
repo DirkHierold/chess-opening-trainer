@@ -1,16 +1,8 @@
-// PGN Parser to convert PGN files into flashcards
+// PGN Parser to convert PGN files into flashcards (complete lines)
 
 import { Chess } from 'chess.js';
-import type { Flashcard, Square, Arrow } from '../types';
+import type { Flashcard, Square, Arrow, Move } from '../types';
 import { v4 as uuidv4 } from 'uuid';
-
-interface ParsedMove {
-  fen: string;
-  move: string;
-  comment?: string;
-  highlightedSquares?: Square[];
-  arrows?: Arrow[];
-}
 
 interface ParsedComment {
   cleanText: string;
@@ -19,9 +11,9 @@ interface ParsedComment {
 }
 
 /**
- * Parse a PGN string and extract all positions with moves and comments
+ * Parse a PGN string and extract complete lines as flashcards
  * @param pgnContent - The PGN file content as string
- * @returns Array of flashcards
+ * @returns Array of flashcards (each flashcard is a complete line)
  */
 export function parsePGNToFlashcards(pgnContent: string): Flashcard[] {
   const flashcards: Flashcard[] = [];
@@ -32,28 +24,25 @@ export function parsePGNToFlashcards(pgnContent: string): Flashcard[] {
   for (const gameText of games) {
     try {
       const chess = new Chess();
-      const moves = extractMovesWithComments(gameText);
+      const moves = extractCompleteLine(gameText);
 
-      for (const moveData of moves) {
-        // Set up the position
-        chess.load(moveData.fen);
-
-        // Create flashcard
-        const flashcard: Flashcard = {
-          id: uuidv4(),
-          fen: moveData.fen,
-          correctMove: moveData.move,
-          comment: moveData.comment,
-          highlightedSquares: moveData.highlightedSquares,
-          arrows: moveData.arrows,
-          easinessFactor: 2.5,
-          interval: 0,
-          repetitions: 0,
-          nextReviewDate: Date.now(), // Due immediately for new cards
-        };
-
-        flashcards.push(flashcard);
+      if (moves.length === 0) {
+        continue;
       }
+
+      // Create flashcard with complete line
+      const flashcard: Flashcard = {
+        id: uuidv4(),
+        startFen: chess.fen(), // Starting position
+        moves,
+        name: extractLineName(gameText),
+        easinessFactor: 2.5,
+        interval: 0,
+        repetitions: 0,
+        nextReviewDate: Date.now(), // Due immediately for new cards
+      };
+
+      flashcards.push(flashcard);
     } catch (error) {
       console.warn('Failed to parse game:', error);
     }
@@ -91,13 +80,13 @@ function splitPGNGames(pgnContent: string): string[] {
 }
 
 /**
- * Extract moves with their positions and comments from a PGN game
- * Only extracts White's moves (for White repertoire training)
+ * Extract complete line (all moves) from a PGN game
+ * Includes both White and Black moves
  * @param gameText - Single game PGN text
- * @returns Array of positions with moves and comments
+ * @returns Array of moves with comments and markup
  */
-function extractMovesWithComments(gameText: string): ParsedMove[] {
-  const moves: ParsedMove[] = [];
+function extractCompleteLine(gameText: string): Move[] {
+  const moves: Move[] = [];
   const chess = new Chess();
 
   // Remove headers
@@ -116,14 +105,8 @@ function extractMovesWithComments(gameText: string): ParsedMove[] {
     let commentIndex = 0;
 
     for (let i = 0; i < history.length; i++) {
-      const currentFen = chess.fen();
-      const move = history[i];
-
-      // Check whose turn it is (White to move = 'w', Black to move = 'b')
       const currentTurn = chess.turn();
-
-      // Make the move
-      chess.move(move.san);
+      const move = history[i];
 
       // Check if there's a comment for this move
       let parsedComment: ParsedComment | undefined;
@@ -132,22 +115,42 @@ function extractMovesWithComments(gameText: string): ParsedMove[] {
         commentIndex++;
       }
 
-      // Only create flashcard if it's White's turn (White's move to learn)
-      if (currentTurn === 'w') {
-        moves.push({
-          fen: currentFen,
-          move: move.san,
-          comment: parsedComment?.cleanText,
-          highlightedSquares: parsedComment?.highlightedSquares,
-          arrows: parsedComment?.arrows,
-        });
-      }
+      // Make the move
+      chess.move(move.san);
+
+      // Add move to sequence (both White and Black)
+      moves.push({
+        san: move.san,
+        color: currentTurn,
+        comment: parsedComment?.cleanText,
+        highlightedSquares: parsedComment?.highlightedSquares,
+        arrows: parsedComment?.arrows,
+      });
     }
   } catch (error) {
     console.warn('Failed to load PGN:', error);
   }
 
   return moves;
+}
+
+/**
+ * Extract line name from PGN headers
+ * @param gameText - PGN game text
+ * @returns Line name or undefined
+ */
+function extractLineName(gameText: string): string | undefined {
+  // Try to extract from Event, ECO, or Opening headers
+  const eventMatch = gameText.match(/\[Event\s+"([^"]+)"\]/);
+  if (eventMatch) return eventMatch[1];
+
+  const openingMatch = gameText.match(/\[Opening\s+"([^"]+)"\]/);
+  if (openingMatch) return openingMatch[1];
+
+  const ecoMatch = gameText.match(/\[ECO\s+"([^"]+)"\]/);
+  if (ecoMatch) return ecoMatch[1];
+
+  return undefined;
 }
 
 /**

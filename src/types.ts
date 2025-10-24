@@ -11,13 +11,19 @@ export interface Arrow {
   color: 'Y' | 'R' | 'G' | 'B';
 }
 
-export interface Flashcard {
-  id: string;
-  fen: string; // Position to show
-  correctMove: string; // Expected move in SAN notation
+export interface Move {
+  san: string; // Move in SAN notation (e.g., "Nf3")
+  color: 'w' | 'b'; // Which side makes this move
   comment?: string; // PGN comment for the move (cleaned, without markup)
   highlightedSquares?: Square[]; // From [%csl] markup
   arrows?: Arrow[]; // From [%cal] markup
+}
+
+export interface Flashcard {
+  id: string;
+  startFen: string; // Starting position for this line
+  moves: Move[]; // Complete sequence of moves in this line
+  name?: string; // Name/description of this line
   easinessFactor: number; // SM-2 algorithm parameter
   interval: number; // Days until next review
   repetitions: number; // Number of consecutive correct answers

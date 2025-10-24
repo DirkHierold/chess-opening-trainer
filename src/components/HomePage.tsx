@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Repertoire } from '../types';
-import { getAllRepertoires, saveRepertoire, getDueFlashcards } from '../utils/storage';
+import { getAllRepertoires, saveRepertoire, getDueFlashcards, deleteRepertoire } from '../utils/storage';
 import { parsePGNToFlashcards, getRepertoireName } from '../utils/pgnParser';
 import { v4 as uuidv4 } from 'uuid';
 import './HomePage.css';
@@ -95,6 +95,15 @@ export const HomePage: React.FC<HomePageProps> = ({ onStartStudy }) => {
 
   const getDueCount = (repertoire: Repertoire): number => {
     return getDueFlashcards(repertoire.id).length;
+  };
+
+  const handleDelete = (repertoireId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering onStartStudy
+
+    if (confirm('Are you sure you want to delete this repertoire?')) {
+      deleteRepertoire(repertoireId);
+      loadRepertoires();
+    }
   };
 
   const formatDate = (timestamp: number): string => {
@@ -193,6 +202,13 @@ export const HomePage: React.FC<HomePageProps> = ({ onStartStudy }) => {
                   className="repertoire-card"
                   onClick={() => onStartStudy(repertoire.id)}
                 >
+                  <button
+                    className="delete-button"
+                    onClick={(e) => handleDelete(repertoire.id, e)}
+                    aria-label="Delete repertoire"
+                  >
+                    ✕
+                  </button>
                   <div className="repertoire-header">
                     <h3 className="repertoire-name">{repertoire.name}</h3>
                     {dueCount > 0 && (

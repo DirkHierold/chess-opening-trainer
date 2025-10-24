@@ -188,6 +188,35 @@
   padding: 1.5rem;
   cursor: pointer;
   transition: all 0.3s ease;
+  position: relative;
+}
+
+.delete-button {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.8);
+  border: 1px solid rgba(239, 68, 68, 1);
+  color: white;
+  font-size: 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.delete-button:hover {
+  background: rgba(239, 68, 68, 1);
+  transform: scale(1.1);
+}
+
+.delete-button:active {
+  transform: scale(0.95);
 }
 
 .repertoire-card:hover {
