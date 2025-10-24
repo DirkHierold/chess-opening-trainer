@@ -29,6 +29,37 @@
   padding: 0 1rem;
 }
 
+.upload-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.toggle-button {
+  flex: 1;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #999;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.toggle-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.toggle-button.active {
+  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+  border-color: #4a90e2;
+  color: white;
+  box-shadow: 0 2px 10px rgba(74, 144, 226, 0.3);
+}
+
 .upload-button {
   display: flex;
   align-items: center;
@@ -37,7 +68,9 @@
   width: 100%;
   padding: 1.25rem;
   background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+  border: none;
   border-radius: 16px;
+  color: white;
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 1.1rem;
@@ -54,8 +87,50 @@
   transform: translateY(0);
 }
 
+.upload-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .upload-icon {
   font-size: 1.5rem;
+}
+
+.text-input-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.pgn-textarea {
+  width: 100%;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: white;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  resize: vertical;
+  transition: all 0.3s ease;
+}
+
+.pgn-textarea:focus {
+  outline: none;
+  border-color: #4a90e2;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
+}
+
+.pgn-textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pgn-textarea::placeholder {
+  color: #666;
 }
 
 .uploading {
@@ -197,6 +272,15 @@
   .upload-button {
     font-size: 1rem;
     padding: 1rem;
+  }
+
+  .toggle-button {
+    font-size: 0.85rem;
+    padding: 0.625rem;
+  }
+
+  .pgn-textarea {
+    font-size: 0.85rem;
   }
 
   .repertoire-card {
