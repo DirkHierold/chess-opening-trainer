@@ -93,31 +93,30 @@ function extractCompleteLine(gameText: string): Move[] {
   // Remove headers
   const pgnWithoutHeaders = gameText.replace(/\[.*?\]\n/g, '').trim();
 
+  // Remove comments for chess.js parsing (it can't handle some comment formats)
+  const pgnWithoutComments = pgnWithoutHeaders.replace(/\{[^}]*\}/g, '').trim();
+
   // Try to load and parse the game
   try {
-    chess.loadPgn(pgnWithoutHeaders);
+    chess.loadPgn(pgnWithoutComments);
     const history = chess.history({ verbose: true });
 
     // Reset to initial position
     chess.reset();
 
-    // Extract comments from PGN
-    const comments = extractComments(pgnWithoutHeaders);
-    let commentIndex = 0;
-
     for (let i = 0; i < history.length; i++) {
       const currentTurn = chess.turn();
       const move = history[i];
 
-      // Check if there's a comment for this move
-      let parsedComment: ParsedComment | undefined;
-      if (commentIndex < comments.length) {
-        parsedComment = parseCommentMarkup(comments[commentIndex]);
-        commentIndex++;
-      }
-
       // Make the move
       chess.move(move.san);
+
+      // Look for comments associated with this move in the original PGN
+      const commentsForMove = findCommentsForMove(pgnWithoutHeaders, move.san, i);
+
+      // Combine multiple comments into one
+      const combinedComment = commentsForMove.join(' ');
+      const parsedComment = combinedComment ? parseCommentMarkup(combinedComment) : undefined;
 
       // Add move to sequence (both White and Black)
       moves.push({
@@ -133,6 +132,103 @@ function extractCompleteLine(gameText: string): Move[] {
   }
 
   return moves;
+}
+
+/**
+ * Find all comments that appear after a specific move in the PGN
+ * Tokenizes the PGN and associates comments with moves
+ * @param pgn - Original PGN text with comments
+ * @param san - The move in SAN notation
+ * @param moveIndex - Index of the move in the sequence
+ * @returns Array of comment strings
+ */
+function findCommentsForMove(pgn: string, san: string, moveIndex: number): string[] {
+  // First, remove all variations (recursively)
+  let pgnWithoutVariations = pgn;
+  let prevLength = 0;
+  while (pgnWithoutVariations.length !== prevLength) {
+    prevLength = pgnWithoutVariations.length;
+    pgnWithoutVariations = pgnWithoutVariations.replace(/\([^()]*\)/g, ' ');
+  }
+
+  // Tokenize the PGN into moves and comments
+  interface Token {
+    type: 'move' | 'comment';
+    value: string;
+  }
+
+  const tokens: Token[] = [];
+  let remaining = pgnWithoutVariations;
+
+  // Regular expressions
+  const moveNumberPattern = /^\d+\.+\s*/;  // Match move numbers like "1." or "1..."
+  const commentPattern = /^\{([^}]*)\}/;   // Match comments in braces
+  const movePattern = /^([NBRQK]?[a-h]?[1-8]?x?[a-h][1-8](?:=[NBRQ])?[+#]?)/;  // Match SAN moves
+  const resultPattern = /^(\*|1-0|0-1|1\/2-1\/2)/;  // Match game results
+
+  while (remaining.length > 0) {
+    // Skip whitespace
+    remaining = remaining.trimStart();
+    if (remaining.length === 0) break;
+
+    // Try to match comment
+    let match = remaining.match(commentPattern);
+    if (match) {
+      tokens.push({ type: 'comment', value: match[1].trim() });
+      remaining = remaining.substring(match[0].length);
+      continue;
+    }
+
+    // Try to match move number (and skip it)
+    match = remaining.match(moveNumberPattern);
+    if (match) {
+      remaining = remaining.substring(match[0].length);
+      continue;
+    }
+
+    // Try to match result (and skip it)
+    match = remaining.match(resultPattern);
+    if (match) {
+      remaining = remaining.substring(match[0].length);
+      continue;
+    }
+
+    // Try to match move
+    match = remaining.match(movePattern);
+    if (match) {
+      const moveSan = match[1];
+      // Skip if it's just a square coordinate without piece (likely not a move)
+      if (!moveSan.match(/^[a-h][1-8]$/)) {
+        tokens.push({ type: 'move', value: moveSan });
+      }
+      remaining = remaining.substring(match[0].length);
+      continue;
+    }
+
+    // If we can't match anything, skip one character
+    remaining = remaining.substring(1);
+  }
+
+  // Now build a map of move index to comments
+  // Comments in PGN appear AFTER the move they describe
+  const moveComments: Map<number, string[]> = new Map();
+  let currentMoveIndex = -1;
+
+  for (const token of tokens) {
+    if (token.type === 'move') {
+      currentMoveIndex++;
+    } else if (token.type === 'comment') {
+      // Comment belongs to the current move (the last move we saw)
+      if (currentMoveIndex >= 0) {
+        const existing = moveComments.get(currentMoveIndex) || [];
+        existing.push(token.value);
+        moveComments.set(currentMoveIndex, existing);
+      }
+    }
+  }
+
+  // Return comments for the requested move
+  return moveComments.get(moveIndex) || [];
 }
 
 /**
@@ -258,10 +354,9 @@ function parseCommentMarkup(comment: string): ParsedComment {
     }
   }
 
-  // Remove markup from comment text
+  // Remove ALL markup from comment text (not just csl and cal)
   result.cleanText = comment
-    .replace(/\[%csl\s+[^\]]+\]/g, '')
-    .replace(/\[%cal\s+[^\]]+\]/g, '')
+    .replace(/\[%[^\]]+\]/g, '') // Remove all [%...] markup commands
     .trim();
 
   return result;

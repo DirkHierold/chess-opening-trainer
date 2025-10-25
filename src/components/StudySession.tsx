@@ -274,17 +274,29 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
     if (!currentCard) return;
 
     let nextIndex = currentMoveIndex + 1;
+    let lastBlackMoveIndex = -1;
 
     // Play all consecutive Black moves
     while (nextIndex < currentCard.moves.length && currentCard.moves[nextIndex].color === 'b') {
       const moveData = currentCard.moves[nextIndex];
       try {
         chess.move(moveData.san);
+        lastBlackMoveIndex = nextIndex;
         nextIndex++;
       } catch (e) {
         console.error('Failed to play opponent move:', e);
         break;
       }
+    }
+
+    // Save annotations from the last black move to display until next white move
+    if (lastBlackMoveIndex >= 0) {
+      const lastBlackMove = currentCard.moves[lastBlackMoveIndex];
+      setLastCorrectMove({
+        comment: lastBlackMove.comment,
+        highlightedSquares: lastBlackMove.highlightedSquares,
+        arrows: lastBlackMove.arrows,
+      });
     }
 
     setBoardPosition(chess.fen());
@@ -305,29 +317,32 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
     setCurrentStreak(0);
   };
 
-  const completeSession = (success: boolean) => {
+  const completeSession = (success: boolean, updateCard: boolean = true) => {
     if (!currentCard) return;
 
-    // Update flashcard with SM-2
-    const sm2Result = calculateSM2(
-      success ? 1 : 0,
-      currentCard.easinessFactor,
-      currentCard.interval,
-      currentCard.repetitions
-    );
+    // Only update flashcard if requested (not on manual exit)
+    if (updateCard) {
+      // Update flashcard with SM-2
+      const sm2Result = calculateSM2(
+        success ? 1 : 0,
+        currentCard.easinessFactor,
+        currentCard.interval,
+        currentCard.repetitions
+      );
 
-    const updatedCard: Flashcard = {
-      ...currentCard,
-      easinessFactor: sm2Result.easinessFactor,
-      interval: sm2Result.interval,
-      repetitions: sm2Result.repetitions,
-      nextReviewDate: getNextReviewDate(sm2Result.interval),
-      lastReviewed: Date.now(),
-    };
+      const updatedCard: Flashcard = {
+        ...currentCard,
+        easinessFactor: sm2Result.easinessFactor,
+        interval: sm2Result.interval,
+        repetitions: sm2Result.repetitions,
+        nextReviewDate: getNextReviewDate(sm2Result.interval),
+        lastReviewed: Date.now(),
+      };
 
-    updateFlashcard(repertoireId, updatedCard);
+      updateFlashcard(repertoireId, updatedCard);
+    }
 
-    // Update repertoire stats
+    // Always update repertoire stats
     updateRepertoireStats(
       repertoireId,
       sessionCorrect,
@@ -337,6 +352,11 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
 
     // Exit back to chapter selection
     onExit();
+  };
+
+  const handleExit = () => {
+    // Save progress on exit without updating the flashcard
+    completeSession(false, false);
   };
 
   if (!repertoire || !currentCard || !currentExpectedMove) {
@@ -353,7 +373,7 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
     <div className="study-session">
       {/* Header with stats */}
       <div className="session-header">
-        <button className="exit-button" onClick={onExit}>
+        <button className="exit-button" onClick={handleExit}>
           ← Exit
         </button>
         <div className="session-stats">

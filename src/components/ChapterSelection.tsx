@@ -20,6 +20,10 @@ export const ChapterSelection: React.FC<ChapterSelectionProps> = ({
   };
 
   const getAccuracy = (chapter: Flashcard): number => {
+    // Show 0% for chapters never reviewed
+    if (chapter.repetitions === 0) {
+      return 0;
+    }
     // Calculate accuracy based on easiness factor
     // EF ranges from 1.3 to 2.5, where higher is better
     const normalized = (chapter.easinessFactor - 1.3) / (2.5 - 1.3);
