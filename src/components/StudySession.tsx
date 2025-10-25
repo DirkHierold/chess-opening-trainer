@@ -40,7 +40,8 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [errorCount, setErrorCount] = useState(0);
   const [showFeedback, setShowFeedback] = useState(false);
-  const [lastCorrectMove, setLastCorrectMove] = useState<MoveAnnotations | null>(null);
+  const [lastWhiteMove, setLastWhiteMove] = useState<MoveAnnotations | null>(null);
+  const [lastBlackMove, setLastBlackMove] = useState<MoveAnnotations | null>(null);
 
   useEffect(() => {
     // Reset scroll position when entering study session
@@ -77,7 +78,8 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
     setErrorCount(0);
     setShowFeedback(false);
     setSelectedSquare(null);
-    setLastCorrectMove(null);
+    setLastWhiteMove(null);
+    setLastBlackMove(null);
   };
 
   // Get the current expected move (always a White move for the user)
@@ -159,20 +161,39 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
       }
     }
 
-    // Show PGN annotations from last correct move or current expected move
-    const annotationsSource = lastCorrectMove || (currentExpectedMove?.move);
-
-    if (annotationsSource) {
-      if (annotationsSource.highlightedSquares) {
-        for (const sq of annotationsSource.highlightedSquares) {
+    // Show PGN annotations from last white move and last black move
+    // Black move annotations take priority if there's overlap
+    if (lastWhiteMove) {
+      if (lastWhiteMove.highlightedSquares) {
+        for (const sq of lastWhiteMove.highlightedSquares) {
           squares[sq.square] = {
             backgroundColor: colorToRgb(sq.color),
           };
         }
       }
 
-      if (annotationsSource.arrows) {
-        for (const arrow of annotationsSource.arrows) {
+      if (lastWhiteMove.arrows) {
+        for (const arrow of lastWhiteMove.arrows) {
+          arrows.push({
+            startSquare: arrow.from,
+            endSquare: arrow.to,
+            color: colorToRgb(arrow.color),
+          });
+        }
+      }
+    }
+
+    if (lastBlackMove) {
+      if (lastBlackMove.highlightedSquares) {
+        for (const sq of lastBlackMove.highlightedSquares) {
+          squares[sq.square] = {
+            backgroundColor: colorToRgb(sq.color),
+          };
+        }
+      }
+
+      if (lastBlackMove.arrows) {
+        for (const arrow of lastBlackMove.arrows) {
           arrows.push({
             startSquare: arrow.from,
             endSquare: arrow.to,
@@ -183,7 +204,7 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
     }
 
     return { squares, arrows };
-  }, [currentExpectedMove, errorCount, showFeedback, lastCorrectMove, chess]);
+  }, [currentExpectedMove, errorCount, showFeedback, lastWhiteMove, lastBlackMove, chess]);
 
   const handleSquareClick = ({ square }: { square: string }) => {
     if (!currentExpectedMove) return;
@@ -195,9 +216,6 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
 
     // If no square selected
     if (!selectedSquare) {
-      // Clear last correct move annotations when starting a new move
-      setLastCorrectMove(null);
-
       // Select this square if it has a white piece
       if (hasWhitePiece) {
         setSelectedSquare(square);
@@ -255,13 +273,15 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
     setCurrentStreak(prev => prev + 1);
     setErrorCount(0);
 
-    // Save annotations from this correct move
+    // Save annotations from this correct white move
     if (currentExpectedMove) {
-      setLastCorrectMove({
+      setLastWhiteMove({
         comment: currentExpectedMove.move.comment,
         highlightedSquares: currentExpectedMove.move.highlightedSquares,
         arrows: currentExpectedMove.move.arrows,
       });
+      // Clear black move comment as we're starting a new white-black sequence
+      setLastBlackMove(null);
     }
 
     // Play opponent's moves automatically after a short delay
@@ -291,11 +311,11 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
 
     // Save annotations from the last black move to display until next white move
     if (lastBlackMoveIndex >= 0) {
-      const lastBlackMove = currentCard.moves[lastBlackMoveIndex];
-      setLastCorrectMove({
-        comment: lastBlackMove.comment,
-        highlightedSquares: lastBlackMove.highlightedSquares,
-        arrows: lastBlackMove.arrows,
+      const lastBlackMoveData = currentCard.moves[lastBlackMoveIndex];
+      setLastBlackMove({
+        comment: lastBlackMoveData.comment,
+        highlightedSquares: lastBlackMoveData.highlightedSquares,
+        arrows: lastBlackMoveData.arrows,
       });
     }
 
@@ -377,16 +397,16 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
           ← Exit
         </button>
         <div className="session-stats">
+          <span className="move-progress">{moveProgress}</span>
           <span className="streak">🔥 {currentStreak}</span>
         </div>
       </div>
 
       {/* Main content area */}
       <div className="content-area">
-        {/* Line name and move progress */}
+        {/* Line name */}
         <div className="line-info">
           {currentCard.name && <div className="line-name">{currentCard.name}</div>}
-          <div className="move-progress">{moveProgress}</div>
         </div>
 
         {/* Chess board with feedback border */}
@@ -410,12 +430,19 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
           />
         </div>
 
-        {/* Comment section - show from last correct move or current expected move */}
-        {(lastCorrectMove?.comment || currentExpectedMove.move.comment) && (
+        {/* Comment section - show white and black comments */}
+        {(lastWhiteMove?.comment || lastBlackMove?.comment) && (
           <div className="comment-section">
-            <div className="move-comment">
-              {lastCorrectMove?.comment || currentExpectedMove.move.comment}
-            </div>
+            {lastWhiteMove?.comment && (
+              <div className="move-comment">
+                {lastWhiteMove.comment}
+              </div>
+            )}
+            {lastBlackMove?.comment && (
+              <div className="move-comment">
+                {lastBlackMove.comment}
+              </div>
+            )}
           </div>
         )}
       </div>
