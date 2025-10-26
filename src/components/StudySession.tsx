@@ -36,7 +36,6 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
   const [currentMoveIndex, setCurrentMoveIndex] = useState(0);
   const [sessionCorrect, setSessionCorrect] = useState(0);
   const [sessionIncorrect, setSessionIncorrect] = useState(0);
-  const [currentStreak, setCurrentStreak] = useState(0);
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [errorCount, setErrorCount] = useState(0);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -56,7 +55,6 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
     }
 
     setRepertoire(loaded);
-    setCurrentStreak(loaded.streak);
 
     // Find the specific chapter
     const chapter = loaded.flashcards.find(card => card.id === chapterId);
@@ -270,7 +268,6 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
     setBoardPosition(chess.fen());
     setShowFeedback(true);
     setSessionCorrect(prev => prev + 1);
-    setCurrentStreak(prev => prev + 1);
     setErrorCount(0);
 
     // Track this move in played moves (keep last 3)
@@ -346,7 +343,6 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
     setErrorCount(prev => prev + 1);
     setShowFeedback(true);
     setSessionIncorrect(prev => prev + 1);
-    setCurrentStreak(0);
   };
 
   const completeSession = (success: boolean, updateCard: boolean = true) => {

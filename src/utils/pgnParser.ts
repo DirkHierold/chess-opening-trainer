@@ -156,7 +156,6 @@ function findCommentsForMoveImproved(pgn: string, moveList: string[], moveIndex:
   // Build a search string that represents the sequence of moves we're looking for
   // We'll find this move and the next move, then extract comments between them
 
-  const currentMove = moveList[moveIndex];
   const nextMove = moveIndex + 1 < moveList.length ? moveList[moveIndex + 1] : null;
 
   // Escape special regex characters in move notation
@@ -211,76 +210,6 @@ function findCommentsForMoveImproved(pgn: string, moveList: string[], moveIndex:
   }
 
   return [];
-}
-
-/**
- * Find all comments that appear after a specific move in the PGN
- * Uses a simpler approach: builds a token stream and matches by position
- * @param pgn - Original PGN text with comments
- * @param san - The move in SAN notation (from chess.js)
- * @param moveIndex - Index of the move in the sequence
- * @returns Array of comment strings
- */
-function findCommentsForMove(pgn: string, san: string, moveIndex: number): string[] {
-  // First, remove all variations (recursively)
-  let pgnWithoutVariations = pgn;
-  let prevLength = 0;
-  while (pgnWithoutVariations.length !== prevLength) {
-    prevLength = pgnWithoutVariations.length;
-    pgnWithoutVariations = pgnWithoutVariations.replace(/\([^()]*\)/g, ' ');
-  }
-
-  // Extract all comments with their positions
-  const comments: { position: number; text: string }[] = [];
-  const commentRegex = /\{([^}]*)\}/g;
-  let match;
-  while ((match = commentRegex.exec(pgnWithoutVariations)) !== null) {
-    comments.push({
-      position: match.index,
-      text: match[1].trim()
-    });
-  }
-
-  // Remove comments to get move-only text
-  const pgnWithoutComments = pgnWithoutVariations.replace(/\{[^}]*\}/g, ' ');
-
-  // Build a more robust move pattern that handles all SAN variations
-  // This pattern matches: O-O-O, O-O, piece moves, pawn moves
-  const moveTokenPattern = /\b(O-O-O|O-O|[NBRQK][a-h]?[1-8]?x?[a-h][1-8](?:=[NBRQK])?[+#]?|[a-h]x?[a-h][1-8](?:=[NBRQK])?[+#]?|[a-h][1-8](?:=[NBRQK])?[+#]?)\b/g;
-
-  const moveMatches: { index: number; san: string; position: number }[] = [];
-  let moveMatch;
-  let currentIndex = 0;
-
-  while ((moveMatch = moveTokenPattern.exec(pgnWithoutComments)) !== null) {
-    const matchedSan = moveMatch[1];
-    // Skip result markers
-    if (matchedSan === '1-0' || matchedSan === '0-1' || matchedSan === '1/2-1/2' || matchedSan === '*') {
-      continue;
-    }
-    moveMatches.push({
-      index: currentIndex++,
-      san: matchedSan,
-      position: moveMatch.index + moveMatch[0].length
-    });
-  }
-
-  // Find our move
-  const ourMove = moveMatches[moveIndex];
-  if (!ourMove) {
-    return [];
-  }
-
-  // Find the next move (or end of text)
-  const nextMove = moveMatches[moveIndex + 1];
-  const endPosition = nextMove ? nextMove.position : pgnWithoutVariations.length;
-
-  // Find all comments between this move's position and the next move's position
-  const moveComments = comments.filter(c =>
-    c.position > ourMove.position && c.position < endPosition
-  );
-
-  return moveComments.map(c => c.text);
 }
 
 /**
@@ -342,24 +271,6 @@ function extractLineName(gameText: string): string | undefined {
   }
 
   return undefined;
-}
-
-/**
- * Extract comments from PGN notation
- * Comments in PGN are enclosed in curly braces {}
- * @param pgn - PGN text
- * @returns Array of comments in order
- */
-function extractComments(pgn: string): string[] {
-  const comments: string[] = [];
-  const commentRegex = /\{([^}]+)\}/g;
-  let match;
-
-  while ((match = commentRegex.exec(pgn)) !== null) {
-    comments.push(match[1].trim());
-  }
-
-  return comments;
 }
 
 /**
