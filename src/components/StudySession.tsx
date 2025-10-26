@@ -42,10 +42,9 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
   const [showFeedback, setShowFeedback] = useState(false);
   const [lastWhiteMove, setLastWhiteMove] = useState<MoveAnnotations | null>(null);
   const [lastBlackMove, setLastBlackMove] = useState<MoveAnnotations | null>(null);
+  const [playedMoves, setPlayedMoves] = useState<string[]>([]); // Track last 3 played moves in SAN notation
 
   useEffect(() => {
-    // Reset scroll position when entering study session
-    window.scrollTo(0, 0);
     loadSession();
   }, [repertoireId, chapterId]);
 
@@ -80,6 +79,7 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
     setSelectedSquare(null);
     setLastWhiteMove(null);
     setLastBlackMove(null);
+    setPlayedMoves([]);
   };
 
   // Get the current expected move (always a White move for the user)
@@ -273,6 +273,11 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
     setCurrentStreak(prev => prev + 1);
     setErrorCount(0);
 
+    // Track this move in played moves (keep last 3)
+    if (currentExpectedMove) {
+      setPlayedMoves(prev => [...prev, currentExpectedMove.move.san].slice(-3));
+    }
+
     // Save annotations from this correct white move
     if (currentExpectedMove) {
       setLastWhiteMove({
@@ -295,18 +300,25 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
 
     let nextIndex = currentMoveIndex + 1;
     let lastBlackMoveIndex = -1;
+    const blackMovesPlayed: string[] = [];
 
     // Play all consecutive Black moves
     while (nextIndex < currentCard.moves.length && currentCard.moves[nextIndex].color === 'b') {
       const moveData = currentCard.moves[nextIndex];
       try {
         chess.move(moveData.san);
+        blackMovesPlayed.push(moveData.san);
         lastBlackMoveIndex = nextIndex;
         nextIndex++;
       } catch (e) {
         console.error('Failed to play opponent move:', e);
         break;
       }
+    }
+
+    // Track black moves in played moves (keep last 3)
+    if (blackMovesPlayed.length > 0) {
+      setPlayedMoves(prev => [...prev, ...blackMovesPlayed].slice(-3));
     }
 
     // Save annotations from the last black move to display until next white move
@@ -387,50 +399,60 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
     );
   }
 
-  const moveProgress = `Move ${currentFullMove} / ${totalFullMoves}`;
+  // Calculate remaining moves (Due)
+  const remainingMoves = totalFullMoves - currentFullMove;
 
   return (
     <div className="study-session">
-      {/* Header with stats */}
-      <div className="session-header">
-        <button className="exit-button" onClick={handleExit}>
-          ← Exit
-        </button>
-        <div className="session-stats">
-          <span className="move-progress">{moveProgress}</span>
-          <span className="streak">🔥 {currentStreak}</span>
-        </div>
+      {/* Chess board at the top */}
+      <div className={`chessboard-container ${showFeedback ? (errorCount === 0 ? 'feedback-correct' : 'feedback-incorrect') : ''}`}>
+        <Chessboard
+          options={{
+            position: boardPosition,
+            onSquareClick: handleSquareClick,
+            allowDragging: false,
+            arrows: displayAnnotations.arrows,
+            squareStyles: {
+              ...displayAnnotations.squares,
+              ...(selectedSquare ? { [selectedSquare]: { backgroundColor: 'rgba(255, 255, 0, 0.4)' } } : {}),
+            },
+            boardOrientation: 'white',
+            boardStyle: {
+              borderRadius: '8px',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+            },
+          }}
+        />
       </div>
 
-      {/* Main content area */}
-      <div className="content-area">
-        {/* Line name */}
-        <div className="line-info">
-          {currentCard.name && <div className="line-name">{currentCard.name}</div>}
+      {/* Scrollable content below board */}
+      <div className="scrollable-content">
+        {/* Last 3 played moves */}
+        {playedMoves.length > 0 && (
+          <div className="played-moves">{playedMoves.join(' ')}</div>
+        )}
+
+        {/* Back button and stats row */}
+        <div className="stats-row">
+          <button className="back-button" onClick={handleExit}>
+            ← Back
+          </button>
+
+          <div className="practice-stats">
+            <span className="practice-label">Practice</span>
+            <span className="stat-item">
+              <span className="stat-value">{remainingMoves}</span> Due 🕐
+            </span>
+            <span className="stat-item">
+              <span className="stat-value">{sessionCorrect}</span> ✓
+            </span>
+            <span className="stat-item">
+              <span className="stat-value">{sessionIncorrect}</span> ✗
+            </span>
+          </div>
         </div>
 
-        {/* Chess board with feedback border */}
-        <div className={`chessboard-container ${showFeedback ? (errorCount === 0 ? 'feedback-correct' : 'feedback-incorrect') : ''}`}>
-          <Chessboard
-            options={{
-              position: boardPosition,
-              onSquareClick: handleSquareClick,
-              allowDragging: false, // Disable drag-and-drop
-              arrows: displayAnnotations.arrows,
-              squareStyles: {
-                ...displayAnnotations.squares,
-                ...(selectedSquare ? { [selectedSquare]: { backgroundColor: 'rgba(255, 255, 0, 0.4)' } } : {}),
-              },
-              boardOrientation: 'white',
-              boardStyle: {
-                borderRadius: '8px',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
-              },
-            }}
-          />
-        </div>
-
-        {/* Comment section - show white and black comments */}
+        {/* Comment section */}
         {(lastWhiteMove?.comment || lastBlackMove?.comment) && (
           <div className="comment-section">
             {lastWhiteMove?.comment && (
