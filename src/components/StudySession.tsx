@@ -118,18 +118,43 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
   }, [currentCard]);
 
   // Format played moves with move numbers for display
+  // Group moves into complete moves (white + black pairs) and only show complete moves
   const formattedPlayedMoves = useMemo(() => {
     if (playedMoves.length === 0) return '';
 
-    const formatted: string[] = [];
+    // Group moves by move number
+    const moveGroups = new Map<number, { white?: string; blacks: string[] }>();
+
     for (const move of playedMoves) {
+      if (!moveGroups.has(move.moveNumber)) {
+        moveGroups.set(move.moveNumber, { blacks: [] });
+      }
+      const group = moveGroups.get(move.moveNumber)!;
       if (move.color === 'w') {
-        formatted.push(`${move.moveNumber}. ${move.san}`);
+        group.white = move.san;
       } else {
-        formatted.push(move.san);
+        group.blacks.push(move.san);
       }
     }
-    return formatted.join(' ');
+
+    // Format complete moves
+    const completeMoves: string[] = [];
+    const sortedMoveNumbers = Array.from(moveGroups.keys()).sort((a, b) => a - b);
+
+    for (const moveNumber of sortedMoveNumbers) {
+      const group = moveGroups.get(moveNumber)!;
+      // Only include complete moves that have at least a white move
+      if (group.white) {
+        const blackPart = group.blacks.length > 0 ? ' ' + group.blacks.join(' ') : '';
+        completeMoves.push(`${moveNumber}. ${group.white}${blackPart}`);
+      }
+    }
+
+    // Show only the most recent complete moves to fit in the available space
+    // When there are too many, older complete moves disappear entirely (not with ellipsis)
+    // Show last 5 complete moves (should fit on most mobile screens)
+    const recentMoves = completeMoves.slice(-5);
+    return recentMoves.join(' ');
   }, [playedMoves]);
 
   // Calculate squares and arrows to display
@@ -285,10 +310,10 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
     setSessionCorrect(prev => prev + 1);
     setErrorCount(0);
 
-    // Track this move in played moves (keep last 3)
+    // Track this move in played moves (keep last 12 for better display)
     if (currentExpectedMove) {
       const moveNumber = currentFullMove;
-      setPlayedMoves(prev => [...prev, { san: currentExpectedMove.move.san, color: 'w' as const, moveNumber }].slice(-3));
+      setPlayedMoves(prev => [...prev, { san: currentExpectedMove.move.san, color: 'w' as const, moveNumber }].slice(-12));
     }
 
     // Save annotations from this correct white move
@@ -332,9 +357,9 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
       }
     }
 
-    // Track black moves in played moves (keep last 3)
+    // Track black moves in played moves (keep last 12 for better display)
     if (blackMovesPlayed.length > 0) {
-      setPlayedMoves(prev => [...prev, ...blackMovesPlayed].slice(-3));
+      setPlayedMoves(prev => [...prev, ...blackMovesPlayed].slice(-12));
     }
 
     // Save annotations from the last black move to display until next white move
