@@ -15,8 +15,11 @@
 /* Chess board at the top - fixed position */
 .chessboard-container {
   width: 100%;
+  max-width: 600px;
+  max-height: 600px;
   flex-shrink: 0;
   position: relative;
+  margin: 0 auto;
 }
 
 .chessboard-container::after {
