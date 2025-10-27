@@ -59,20 +59,17 @@
   min-height: 2rem; /* Fixed space to prevent layout shift */
   overflow: hidden;
   white-space: nowrap;
-  direction: rtl; /* Makes overflow happen on the left side */
-}
-
-.played-moves > * {
-  direction: ltr; /* Keep text left-to-right */
 }
 
 /* Stats row with back button and stats */
 .stats-row {
   display: flex;
+  flex-direction: row;
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  padding: 0.5rem 0;
+  padding: 0.5rem 1rem;
+  flex-wrap: nowrap;
 }
 
 .back-button {
@@ -81,9 +78,10 @@
   color: #999;
   font-size: 1rem;
   cursor: pointer;
-  padding: 0.5rem 0.5rem 0.5rem 0;
+  padding: 0.5rem 0;
   transition: color 0.2s ease;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .back-button:hover {
@@ -96,17 +94,22 @@
 
 .practice-stats {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 1rem;
   font-size: 1rem;
-  margin-left: auto;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
 }
 
 .stat-item {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 0.25rem;
   color: #999;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .stat-value {
