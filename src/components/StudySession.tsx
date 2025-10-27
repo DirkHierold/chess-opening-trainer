@@ -41,7 +41,7 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
   const [showFeedback, setShowFeedback] = useState(false);
   const [lastWhiteMove, setLastWhiteMove] = useState<MoveAnnotations | null>(null);
   const [lastBlackMove, setLastBlackMove] = useState<MoveAnnotations | null>(null);
-  const [playedMoves, setPlayedMoves] = useState<string[]>([]); // Track last 3 played moves in SAN notation
+  const [playedMoves, setPlayedMoves] = useState<Array<{ san: string; color: 'w' | 'b'; moveNumber: number }>>([]); // Track last 3 played moves with move numbers
 
   useEffect(() => {
     loadSession();
@@ -116,6 +116,21 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
     }
     return whiteMoves;
   }, [currentCard]);
+
+  // Format played moves with move numbers for display
+  const formattedPlayedMoves = useMemo(() => {
+    if (playedMoves.length === 0) return '';
+
+    const formatted: string[] = [];
+    for (const move of playedMoves) {
+      if (move.color === 'w') {
+        formatted.push(`${move.moveNumber}. ${move.san}`);
+      } else {
+        formatted.push(move.san);
+      }
+    }
+    return formatted.join(' ');
+  }, [playedMoves]);
 
   // Calculate squares and arrows to display
   const displayAnnotations = useMemo(() => {
@@ -272,7 +287,8 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
 
     // Track this move in played moves (keep last 3)
     if (currentExpectedMove) {
-      setPlayedMoves(prev => [...prev, currentExpectedMove.move.san].slice(-3));
+      const moveNumber = currentFullMove;
+      setPlayedMoves(prev => [...prev, { san: currentExpectedMove.move.san, color: 'w' as const, moveNumber }].slice(-3));
     }
 
     // Save annotations from this correct white move
@@ -297,14 +313,17 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
 
     let nextIndex = currentMoveIndex + 1;
     let lastBlackMoveIndex = -1;
-    const blackMovesPlayed: string[] = [];
+    const blackMovesPlayed: Array<{ san: string; color: 'w' | 'b'; moveNumber: number }> = [];
+
+    // Calculate move number for black moves (same as the white move that just happened)
+    const moveNumber = currentFullMove;
 
     // Play all consecutive Black moves
     while (nextIndex < currentCard.moves.length && currentCard.moves[nextIndex].color === 'b') {
       const moveData = currentCard.moves[nextIndex];
       try {
         chess.move(moveData.san);
-        blackMovesPlayed.push(moveData.san);
+        blackMovesPlayed.push({ san: moveData.san, color: 'b' as const, moveNumber });
         lastBlackMoveIndex = nextIndex;
         nextIndex++;
       } catch (e) {
@@ -424,9 +443,7 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
       {/* Scrollable content below board */}
       <div className="scrollable-content">
         {/* Last 3 played moves */}
-        {playedMoves.length > 0 && (
-          <div className="played-moves">{playedMoves.join(' ')}</div>
-        )}
+        <div className="played-moves">{formattedPlayedMoves || '\u00A0'}</div>
 
         {/* Back button and stats row */}
         <div className="stats-row">
@@ -435,7 +452,6 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
           </button>
 
           <div className="practice-stats">
-            <span className="practice-label">Practice</span>
             <span className="stat-item">
               <span className="stat-value">{remainingMoves}</span> Due 🕐
             </span>
