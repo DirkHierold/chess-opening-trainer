@@ -478,13 +478,13 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
 
           <div className="practice-stats">
             <span className="stat-item">
-              <span className="stat-value">{remainingMoves}</span> Due 🕐
+              <span className="stat-value">{remainingMoves}</span> ⏱️
             </span>
             <span className="stat-item">
-              <span className="stat-value">{sessionCorrect}</span> ✓
+              <span className="stat-value">{sessionCorrect}</span> ✅
             </span>
             <span className="stat-item">
-              <span className="stat-value">{sessionIncorrect}</span> ✗
+              <span className="stat-value">{sessionIncorrect}</span> ❌
             </span>
           </div>
         </div>
