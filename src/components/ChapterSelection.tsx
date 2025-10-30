@@ -1,20 +1,26 @@
 import React from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import type { Flashcard } from '../types';
+import { getRepertoire } from '../utils/storage';
 import './ChapterSelection.css';
 
-interface ChapterSelectionProps {
-  repertoireName: string;
-  chapters: Flashcard[];
-  onSelectChapter: (chapterId: string) => void;
-  onBack: () => void;
-}
+export const ChapterSelection: React.FC = () => {
+  const { repertoireId } = useParams<{ repertoireId: string }>();
+  const navigate = useNavigate();
 
-export const ChapterSelection: React.FC<ChapterSelectionProps> = ({
-  repertoireName,
-  chapters,
-  onSelectChapter,
-  onBack,
-}) => {
+  if (!repertoireId) {
+    navigate('/');
+    return null;
+  }
+
+  const repertoire = getRepertoire(repertoireId);
+
+  if (!repertoire) {
+    navigate('/');
+    return null;
+  }
+
+  const { name: repertoireName, flashcards: chapters } = repertoire;
   const isDue = (chapter: Flashcard): boolean => {
     return chapter.nextReviewDate <= Date.now();
   };
@@ -48,7 +54,7 @@ export const ChapterSelection: React.FC<ChapterSelectionProps> = ({
   return (
     <div className="chapter-selection">
       <header className="chapter-header">
-        <button className="back-button" onClick={onBack}>
+        <button className="back-button" onClick={() => navigate('/')}>
           ← Back
         </button>
         <div className="header-info">
@@ -72,7 +78,7 @@ export const ChapterSelection: React.FC<ChapterSelectionProps> = ({
                 <div
                   key={chapter.id}
                   className={`chapter-card ${due ? 'due' : ''}`}
-                  onClick={() => onSelectChapter(chapter.id)}
+                  onClick={() => navigate(`/repertoire/${repertoireId}/chapter/${chapter.id}`)}
                 >
                   <div className="chapter-header-row">
                     <h3 className="chapter-name">

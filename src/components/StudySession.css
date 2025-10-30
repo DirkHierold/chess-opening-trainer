@@ -54,7 +54,7 @@
 }
 
 /* Played moves display */
-.played-moves {
+.study-session .played-moves {
   font-size: 0.9rem;
   color: #999;
   text-align: left;
@@ -66,18 +66,16 @@
 }
 
 /* Stats row with back button and stats */
-.stats-row {
-  display: flex !important;
-  flex-direction: row !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  gap: 1rem !important;
-  padding: 0.5rem 1rem !important;
-  flex-wrap: nowrap !important;
-  width: 100% !important;
+.study-session .stats-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  width: 100%;
 }
 
-.back-button {
+.study-session .back-button {
   background: transparent;
   border: none;
   color: #999;
@@ -85,36 +83,34 @@
   cursor: pointer;
   padding: 0.5rem 0;
   transition: color 0.2s ease;
-  flex-shrink: 0;
   white-space: nowrap;
+  justify-self: start;
 }
 
-.back-button:hover {
+.study-session .back-button:hover {
   color: #fff;
 }
 
-.back-button:active {
+.study-session .back-button:active {
   transform: scale(0.95);
 }
 
-.practice-stats {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  gap: 1rem !important;
-  font-size: 1rem !important;
-  flex-shrink: 0 !important;
-  flex-wrap: nowrap !important;
+.study-session .practice-stats {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+  font-size: 1rem;
+  justify-self: end;
 }
 
-.stat-item {
-  display: inline-flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  gap: 0.25rem !important;
-  color: #999 !important;
-  white-space: nowrap !important;
-  flex-shrink: 0 !important;
+.study-session .stat-item {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.25rem;
+  color: #999;
+  white-space: nowrap;
 }
 
 .stat-value {

@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { Repertoire } from '../types';
 import { getAllRepertoires, saveRepertoire, getDueFlashcards, deleteRepertoire } from '../utils/storage';
 import { parsePGNToFlashcards, getRepertoireName } from '../utils/pgnParser';
 import { v4 as uuidv4 } from 'uuid';
 import './HomePage.css';
 
-interface HomePageProps {
-  onStartStudy: (repertoireId: string) => void;
-}
-
-export const HomePage: React.FC<HomePageProps> = ({ onStartStudy }) => {
+export const HomePage: React.FC = () => {
+  const navigate = useNavigate();
   const [repertoires, setRepertoires] = useState<Repertoire[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -98,7 +96,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onStartStudy }) => {
   };
 
   const handleDelete = (repertoireId: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent triggering onStartStudy
+    e.stopPropagation(); // Prevent triggering navigation
 
     if (confirm('Are you sure you want to delete this repertoire?')) {
       deleteRepertoire(repertoireId);
@@ -200,7 +198,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onStartStudy }) => {
                 <div
                   key={repertoire.id}
                   className="repertoire-card"
-                  onClick={() => onStartStudy(repertoire.id)}
+                  onClick={() => navigate(`/repertoire/${repertoire.id}`)}
                 >
                   <button
                     className="delete-button"

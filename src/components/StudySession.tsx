@@ -1,16 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
 import type { Flashcard, Repertoire, Square, Arrow } from '../types';
 import { getRepertoire, updateFlashcard, updateRepertoireStats } from '../utils/storage';
 import { calculateSM2, getNextReviewDate } from '../utils/sm2';
 import './StudySession.css';
-
-interface StudySessionProps {
-  repertoireId: string;
-  chapterId: string;
-  onExit: () => void;
-}
 
 interface MoveAnnotations {
   comment?: string;
@@ -28,7 +23,14 @@ const colorToRgb = (color: 'Y' | 'R' | 'G' | 'B'): string => {
   }
 };
 
-export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapterId, onExit }) => {
+export const StudySession: React.FC = () => {
+  const { repertoireId, chapterId } = useParams<{ repertoireId: string; chapterId: string }>();
+  const navigate = useNavigate();
+
+  if (!repertoireId || !chapterId) {
+    navigate('/');
+    return null;
+  }
   const [repertoire, setRepertoire] = useState<Repertoire | null>(null);
   const [currentCard, setCurrentCard] = useState<Flashcard | null>(null);
   const [chess] = useState(new Chess());
@@ -50,7 +52,7 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
   const loadSession = () => {
     const loaded = getRepertoire(repertoireId);
     if (!loaded) {
-      onExit();
+      navigate(`/repertoire/${repertoireId}`);
       return;
     }
 
@@ -60,7 +62,7 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
     const chapter = loaded.flashcards.find(card => card.id === chapterId);
     if (!chapter) {
       alert('Chapter not found!');
-      onExit();
+      navigate(`/repertoire/${repertoireId}`);
       return;
     }
 
@@ -423,7 +425,7 @@ export const StudySession: React.FC<StudySessionProps> = ({ repertoireId, chapte
     );
 
     // Exit back to chapter selection
-    onExit();
+    navigate(`/repertoire/${repertoireId}`);
   };
 
   const handleExit = () => {
