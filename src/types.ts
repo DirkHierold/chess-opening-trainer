@@ -29,6 +29,7 @@ export interface Flashcard {
   repetitions: number; // Number of consecutive correct answers
   nextReviewDate: number; // Timestamp for next review
   lastReviewed?: number; // Timestamp of last review
+  mistakeIndices?: number[]; // Indices of white moves that had mistakes
 }
 
 export interface Repertoire {

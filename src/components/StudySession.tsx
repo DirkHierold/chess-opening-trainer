@@ -44,6 +44,8 @@ export const StudySession: React.FC = () => {
   const [lastWhiteMove, setLastWhiteMove] = useState<MoveAnnotations | null>(null);
   const [lastBlackMove, setLastBlackMove] = useState<MoveAnnotations | null>(null);
   const [playedMoves, setPlayedMoves] = useState<Array<{ san: string; color: 'w' | 'b'; moveNumber: number }>>([]); // Track last 3 played moves with move numbers
+  const [isAutoPlaying, setIsAutoPlaying] = useState(false);
+  const [moveMistakes, setMoveMistakes] = useState<Set<number>>(new Set()); // Track which move indices had mistakes
 
   useEffect(() => {
     loadSession();
@@ -80,6 +82,79 @@ export const StudySession: React.FC = () => {
     setLastWhiteMove(null);
     setLastBlackMove(null);
     setPlayedMoves([]);
+
+    // Initialize move mistakes from saved data
+    const mistakes = new Set(card.mistakeIndices || []);
+    setMoveMistakes(mistakes);
+
+    // Auto-play to first mistake or from beginning
+    setTimeout(() => {
+      autoPlayToFirstMistake(card, mistakes);
+    }, 500);
+  };
+
+  // Auto-play moves up to the first mistake position
+  const autoPlayToFirstMistake = async (card: Flashcard, mistakes: Set<number>) => {
+    setIsAutoPlaying(true);
+
+    // Find first mistake index (index in the moves array where a white move had an error)
+    let firstMistakeIndex = -1;
+    for (const mistakeIdx of Array.from(mistakes).sort((a, b) => a - b)) {
+      // mistakeIdx is the index of a white move that had mistakes
+      if (mistakeIdx < card.moves.length) {
+        firstMistakeIndex = mistakeIdx;
+        break;
+      }
+    }
+
+    // If no mistakes, start from beginning
+    if (firstMistakeIndex === -1) {
+      setIsAutoPlaying(false);
+      return;
+    }
+
+    // Auto-play all moves up to (but not including) the first mistake
+    let moveIdx = 0;
+    while (moveIdx < firstMistakeIndex) {
+      const move = card.moves[moveIdx];
+
+      try {
+        chess.move(move.san);
+
+        // Track move in played moves
+        const moveNumber = Math.floor(moveIdx / 2) + 1;
+        setPlayedMoves(prev => [...prev, { san: move.san, color: move.color, moveNumber }].slice(-12));
+
+        // Update annotations
+        if (move.color === 'w') {
+          setLastWhiteMove({
+            comment: move.comment,
+            highlightedSquares: move.highlightedSquares,
+            arrows: move.arrows,
+          });
+          setLastBlackMove(null);
+        } else {
+          setLastBlackMove({
+            comment: move.comment,
+            highlightedSquares: move.highlightedSquares,
+            arrows: move.arrows,
+          });
+        }
+
+        setBoardPosition(chess.fen());
+        setCurrentMoveIndex(moveIdx + 1);
+
+        // Wait ~1 second before next move
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        moveIdx++;
+      } catch (e) {
+        console.error('Failed to auto-play move:', e);
+        break;
+      }
+    }
+
+    setIsAutoPlaying(false);
   };
 
   // Get the current expected move (always a White move for the user)
@@ -247,7 +322,7 @@ export const StudySession: React.FC = () => {
   }, [currentExpectedMove, errorCount, showFeedback, lastWhiteMove, lastBlackMove, chess]);
 
   const handleSquareClick = ({ square }: { square: string }) => {
-    if (!currentExpectedMove) return;
+    if (!currentExpectedMove || isAutoPlaying) return;
 
     // Check if there's a piece on this square
     const squares = chess.board().flat();
@@ -381,6 +456,10 @@ export const StudySession: React.FC = () => {
     // Check if line is complete
     if (nextIndex >= currentCard.moves.length) {
       // Line complete, session successful
+      // If no errors this session, clear all mistake indices
+      if (sessionIncorrect === 0) {
+        setMoveMistakes(new Set());
+      }
       completeSession(true);
     }
   };
@@ -389,6 +468,11 @@ export const StudySession: React.FC = () => {
     setErrorCount(prev => prev + 1);
     setShowFeedback(true);
     setSessionIncorrect(prev => prev + 1);
+
+    // Track this move index as having a mistake
+    if (currentExpectedMove) {
+      setMoveMistakes(prev => new Set([...prev, currentExpectedMove.index]));
+    }
   };
 
   const completeSession = (success: boolean, updateCard: boolean = true) => {
@@ -411,6 +495,15 @@ export const StudySession: React.FC = () => {
         repetitions: sm2Result.repetitions,
         nextReviewDate: getNextReviewDate(sm2Result.interval),
         lastReviewed: Date.now(),
+        mistakeIndices: Array.from(moveMistakes),
+      };
+
+      updateFlashcard(repertoireId, updatedCard);
+    } else {
+      // Even if not updating SM-2, still update mistake indices
+      const updatedCard: Flashcard = {
+        ...currentCard,
+        mistakeIndices: Array.from(moveMistakes),
       };
 
       updateFlashcard(repertoireId, updatedCard);
@@ -470,7 +563,9 @@ export const StudySession: React.FC = () => {
       {/* Scrollable content below board */}
       <div className="scrollable-content">
         {/* Last 3 played moves */}
-        <div className="played-moves">{formattedPlayedMoves || '\u00A0'}</div>
+        <div className="played-moves">
+          {isAutoPlaying ? 'Auto-playing to first mistake...' : (formattedPlayedMoves || '\u00A0')}
+        </div>
 
         {/* Back button and stats row */}
         <div className="stats-row">
