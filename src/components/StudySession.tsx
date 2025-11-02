@@ -387,6 +387,15 @@ export const StudySession: React.FC = () => {
     setSessionCorrect(prev => prev + 1);
     setErrorCount(0);
 
+    // Remove this move from mistakes if it was there (user solved it correctly)
+    if (currentExpectedMove) {
+      setMoveMistakes(prev => {
+        const newMistakes = new Set(prev);
+        newMistakes.delete(currentExpectedMove.index);
+        return newMistakes;
+      });
+    }
+
     // Track this move in played moves (keep last 12 for better display)
     if (currentExpectedMove) {
       const moveNumber = currentFullMove;
