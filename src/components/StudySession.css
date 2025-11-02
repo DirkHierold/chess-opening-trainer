@@ -65,12 +65,8 @@
   white-space: nowrap;
 }
 
-/* Stats row with back button and stats */
-.study-session .stats-row {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 1rem;
+/* Back button row */
+.study-session .back-button-row {
   padding: 0.5rem 1rem;
   width: 100%;
 }
@@ -84,7 +80,6 @@
   padding: 0.5rem 0;
   transition: color 0.2s ease;
   white-space: nowrap;
-  justify-self: start;
 }
 
 .study-session .back-button:hover {
@@ -93,29 +88,6 @@
 
 .study-session .back-button:active {
   transform: scale(0.95);
-}
-
-.study-session .practice-stats {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 1rem;
-  font-size: 1rem;
-  justify-self: end;
-}
-
-.study-session .stat-item {
-  display: inline-flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.25rem;
-  color: #999;
-  white-space: nowrap;
-}
-
-.stat-value {
-  color: #fff;
-  font-weight: 600;
 }
 
 /* Comment section */
@@ -143,15 +115,6 @@
 
   .played-moves {
     font-size: 0.85rem;
-  }
-
-  .practice-stats {
-    font-size: 0.9rem;
-    gap: 0.5rem;
-  }
-
-  .practice-label {
-    font-size: 1.1rem;
   }
 
   .move-comment {

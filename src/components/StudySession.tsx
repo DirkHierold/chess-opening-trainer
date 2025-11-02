@@ -183,17 +183,6 @@ export const StudySession: React.FC = () => {
     return whiteMoves;
   }, [currentCard, currentMoveIndex]);
 
-  const totalFullMoves = useMemo(() => {
-    if (!currentCard) return 0;
-    let whiteMoves = 0;
-    for (const move of currentCard.moves) {
-      if (move.color === 'w') {
-        whiteMoves++;
-      }
-    }
-    return whiteMoves;
-  }, [currentCard]);
-
   // Format played moves with move numbers for display
   // Group moves into complete moves (white + black pairs) and only show complete moves
   const formattedPlayedMoves = useMemo(() => {
@@ -545,9 +534,6 @@ export const StudySession: React.FC = () => {
     );
   }
 
-  // Calculate remaining moves (Due)
-  const remainingMoves = totalFullMoves - currentFullMove;
-
   return (
     <div className="study-session">
       {/* Chess board at the top */}
@@ -578,23 +564,11 @@ export const StudySession: React.FC = () => {
           {isAutoPlaying ? 'Auto-playing to first mistake...' : (formattedPlayedMoves || '\u00A0')}
         </div>
 
-        {/* Back button and stats row */}
-        <div className="stats-row">
+        {/* Back button */}
+        <div className="back-button-row">
           <button className="back-button" onClick={handleExit}>
             ← Back
           </button>
-
-          <div className="practice-stats">
-            <span className="stat-item">
-              <span className="stat-value">{remainingMoves}</span> ⏱️
-            </span>
-            <span className="stat-item">
-              <span className="stat-value">{sessionCorrect}</span> ✅
-            </span>
-            <span className="stat-item">
-              <span className="stat-value">{sessionIncorrect}</span> ❌
-            </span>
-          </div>
         </div>
 
         {/* Comment section */}

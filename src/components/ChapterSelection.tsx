@@ -25,17 +25,6 @@ export const ChapterSelection: React.FC = () => {
     return chapter.nextReviewDate <= Date.now();
   };
 
-  const getAccuracy = (chapter: Flashcard): number => {
-    // Show 0% for chapters never reviewed
-    if (chapter.repetitions === 0) {
-      return 0;
-    }
-    // Calculate accuracy based on easiness factor
-    // EF ranges from 1.3 to 2.5, where higher is better
-    const normalized = (chapter.easinessFactor - 1.3) / (2.5 - 1.3);
-    return Math.round(normalized * 100);
-  };
-
   const formatNextReview = (timestamp: number): string => {
     const now = Date.now();
     if (timestamp <= now) return 'Due now';
@@ -72,7 +61,7 @@ export const ChapterSelection: React.FC = () => {
           <div className="chapters-list">
             {chapters.map((chapter, index) => {
               const due = isDue(chapter);
-              const accuracy = getAccuracy(chapter);
+              const mistakeCount = chapter.mistakeIndices?.length || 0;
 
               return (
                 <div
@@ -89,15 +78,11 @@ export const ChapterSelection: React.FC = () => {
 
                   <div className="chapter-stats">
                     <div className="stat">
-                      <span className="stat-label">Moves</span>
-                      <span className="stat-value">{chapter.moves.length}</span>
+                      <span className="stat-label">Mistakes</span>
+                      <span className="stat-value">{mistakeCount}</span>
                     </div>
                     <div className="stat">
-                      <span className="stat-label">Accuracy</span>
-                      <span className="stat-value">{accuracy}%</span>
-                    </div>
-                    <div className="stat">
-                      <span className="stat-label">Reviews</span>
+                      <span className="stat-label">Completed</span>
                       <span className="stat-value">{chapter.repetitions}</span>
                     </div>
                   </div>
