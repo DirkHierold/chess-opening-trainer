@@ -385,16 +385,18 @@ export const StudySession: React.FC = () => {
     setBoardPosition(chess.fen());
     setShowFeedback(true);
     setSessionCorrect(prev => prev + 1);
-    setErrorCount(0);
 
-    // Remove this move from mistakes if it was there (user solved it correctly)
-    if (currentExpectedMove) {
+    // Only remove from mistakes if solved on FIRST try (without hints)
+    // If user needed hints (errorCount > 0), keep it in mistakes for next session
+    if (currentExpectedMove && errorCount === 0) {
       setMoveMistakes(prev => {
         const newMistakes = new Set(prev);
         newMistakes.delete(currentExpectedMove.index);
         return newMistakes;
       });
     }
+
+    setErrorCount(0);
 
     // Track this move in played moves (keep last 12 for better display)
     if (currentExpectedMove) {
